@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import {
   LayoutGrid, ArrowLeftRight, CreditCard, Building2, Vault, Banknote, Home, ChevronLeft, ChevronRight,
-  ChevronDown, Bell, Plus, Sun, Moon, Menu, X, Receipt, ShoppingBag, PiggyBank, TrendingUp, ChevronUp, House, HandCoins, Landmark, Inbox,
+  ChevronDown, Bell, Plus, Sun, Moon, Menu, X, Receipt, ShoppingBag, PiggyBank, TrendingUp, ChevronUp, House, HandCoins, Landmark, Inbox, Heart, LogOut, KeyRound,
 } from 'lucide-react';
 import { useApp } from './store.jsx';
 import { FORMS } from './forms.jsx';
-import { useOutside, BillIcon, useBackClose } from './ui.jsx';
+import { useOutside, BillIcon, useBackClose, Modal } from './ui.jsx';
 import { MONTHS, MONTHS_SHORT, parseMk, mk, addMonths, notifications, reviewQueue, brl, currentMk } from './lib.js';
 import Dashboard from './pages/Dashboard.jsx';
 import Fluxo from './pages/Fluxo.jsx';
@@ -17,9 +17,11 @@ import Contas from './pages/Contas.jsx';
 import Receber from './pages/Receber.jsx';
 import Bancos from './pages/Bancos.jsx';
 import Revisar from './pages/Revisar.jsx';
+import Casal from './pages/Casal.jsx';
 
 const NAV = [
   { r: '/', label: 'Visão geral', icon: LayoutGrid },
+  { r: '/casal', label: 'Nós dois', icon: Heart },
   { r: '/revisar', label: 'Para revisar', icon: Inbox, count: true },
   { r: '/fluxo', label: 'Fluxo de caixa', icon: ArrowLeftRight },
   { r: '/cartoes', label: 'Cartões', icon: CreditCard },
@@ -32,7 +34,7 @@ const NAV2 = [
   { r: '/contas', label: 'Contas fixas', icon: Home },
   { r: '/bancos', label: 'Bancos conectados', icon: Landmark },
 ];
-const PAGES = { '/': Dashboard, '/fluxo': Fluxo, '/cartoes': Cartoes, '/casa': Casa, '/reserva': Reserva, '/renda': Renda, '/contas': Contas, '/receber': Receber, '/bancos': Bancos, '/revisar': Revisar };
+const PAGES = { '/': Dashboard, '/fluxo': Fluxo, '/cartoes': Cartoes, '/casa': Casa, '/reserva': Reserva, '/renda': Renda, '/contas': Contas, '/receber': Receber, '/bancos': Bancos, '/revisar': Revisar, '/casal': Casal };
 
 function Brand() {
   return (
@@ -40,16 +42,16 @@ function Brand() {
       <img className="brand-logo" src="/favicon.svg?v=3" alt="" width={36} height={36} />
       <div>
         <b>Caderninho</b>
-        <small>Finanças pessoais</small>
+        <small>Finanças do casal</small>
       </div>
     </div>
   );
 }
 
 function Sidebar({ open, onClose }) {
-  const { route, go, state, update } = useApp();
+  const { route, go, state, update, user, logout } = useApp();
   useBackClose(open, onClose);
-  const [editName, setEditName] = useState(false);
+  const [pwd, setPwd] = useState(false);
   const pending = reviewQueue(state).length;
   const item = (n) => (
     <button key={n.r} className={`nav-item ${route === n.r ? 'on' : ''}`} onClick={() => { go(n.r); onClose(); }}>
@@ -78,20 +80,42 @@ function Sidebar({ open, onClose }) {
             <button className={state.theme === 'dark' ? 'on' : ''} onClick={() => update((s) => { s.theme = 'dark'; })} aria-label="Tema escuro"><Moon size={14} /></button>
           </div>
         </div>
-        <div className="profile" onClick={() => setEditName(true)}>
-          <span className="av blue">{(state.profile.name || 'V')[0].toUpperCase()}</span>
+        <div className="profile">
+          <span className="av blue">{(user.name || 'V')[0].toUpperCase()}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            {editName ? (
-              <input className="name-input" autoFocus defaultValue={state.profile.name}
-                onBlur={(e) => { const v = e.target.value.trim(); update((s) => { s.profile.name = v || 'Você'; }); setEditName(false); }}
-                onKeyDown={(e) => e.key === 'Enter' && e.target.blur()} />
-            ) : <b>{state.profile.name}</b>}
-            <small><i className="dot orange" /> Uso pessoal</small>
+            <b className="ellipsis">{user.name}</b>
+            <small>@{user.login}</small>
           </div>
-          <ChevronUp size={14} className="muted" />
+          <button className="icon-btn ghost" onClick={() => setPwd(true)} aria-label="Trocar senha" title="Trocar senha"><KeyRound size={15} /></button>
+          <button className="icon-btn ghost" onClick={logout} aria-label="Sair" title="Sair"><LogOut size={15} /></button>
         </div>
+        {pwd && <PasswordModal onClose={() => setPwd(false)} />}
       </aside>
     </>
+  );
+}
+
+function PasswordModal({ onClose }) {
+  const [cur, setCur] = useState('');
+  const [next, setNext] = useState('');
+  const [again, setAgain] = useState('');
+  const [msg, setMsg] = useState(null);
+  const save = async () => {
+    if (next !== again) return setMsg({ err: 'As senhas novas não conferem' });
+    const r = await fetch('/api/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current: cur, next }) });
+    const j = await r.json().catch(() => ({}));
+    setMsg(r.ok ? { ok: 'Senha trocada. Os outros aparelhos vão pedir login de novo.' } : { err: j.error || `Erro ${r.status}` });
+  };
+  return (
+    <Modal title="Trocar senha" onClose={onClose}
+      footer={msg?.ok ? <button className="btn primary" onClick={onClose}>Fechar</button>
+        : <button className="btn primary" disabled={!cur || !next || !again} onClick={save}>Salvar</button>}>
+      <label className="field"><span className="field-label">Senha atual</span><input type="password" autoComplete="current-password" value={cur} onChange={(e) => setCur(e.target.value)} /></label>
+      <label className="field"><span className="field-label">Senha nova</span><input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} /></label>
+      <label className="field"><span className="field-label">Repita a senha nova</span><input type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} /></label>
+      {msg?.err && <p className="login-err">{msg.err}</p>}
+      {msg?.ok && <p className="meta">{msg.ok}</p>}
+    </Modal>
   );
 }
 

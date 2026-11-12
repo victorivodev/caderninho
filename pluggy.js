@@ -86,7 +86,7 @@ const isPix = (tx) => /PIX/i.test(tx.operationType || '') || /PIX/i.test(tx.paym
 const isBoleto = (tx) => /BOLETO|CONVENIO|ARRECADA/i.test(tx.operationType || '') || /BOLETO/i.test(tx.paymentData?.paymentMethod || '') || /boleto|debito autom|deb autom|convenio|arrecada/.test(norm(tx.description));
 
 // ---------- armazenamento ----------
-export function setupPluggy({ dataDir, readState, mutateState, log = console.log }) {
+export function setupPluggy({ dataDir, readState, mutateState, log = console.log, envFile = path.join(dataDir, '..', '.env'), clientUserId = 'solo-finn' }) {
   const FILE = path.join(dataDir, 'pluggy.json');
   const load = () => {
     try { return { items: [], known: {}, ...JSON.parse(fs.readFileSync(FILE, 'utf8')) }; } catch { return { items: [], known: {} }; }
@@ -96,7 +96,7 @@ export function setupPluggy({ dataDir, readState, mutateState, log = console.log
   // relê o .env se as credenciais ainda não estiverem carregadas (permite colar o secret sem reiniciar)
   const configured = () => {
     if (!(process.env.PLUGGY_CLIENT_ID && process.env.PLUGGY_CLIENT_SECRET)) {
-      try { const env = parseEnv(fs.readFileSync(path.join(dataDir, '..', '.env'), 'utf8')); for (const k of Object.keys(env)) if (k.startsWith('PLUGGY_') && env[k]) process.env[k] = env[k]; } catch {}
+      try { const env = parseEnv(fs.readFileSync(envFile, 'utf8')); for (const k of Object.keys(env)) if (k.startsWith('PLUGGY_') && env[k]) process.env[k] = env[k]; } catch {}
     }
     return !!(process.env.PLUGGY_CLIENT_ID && process.env.PLUGGY_CLIENT_SECRET);
   };
@@ -374,7 +374,7 @@ export function setupPluggy({ dataDir, readState, mutateState, log = console.log
       }
       if (p === '/connect-token' && req.method === 'POST') {
         const { itemId } = await body(req);
-        const t = await api().createConnectToken(itemId || undefined, { clientUserId: 'solo-finn' });
+        const t = await api().createConnectToken(itemId || undefined, { clientUserId });
         const ids = (process.env.PLUGGY_CONNECTOR_IDS || '').split(',').map(Number).filter(Boolean);
         return json(res, 200, { accessToken: t.accessToken, connectorIds: ids.length ? ids : undefined });
       }
@@ -425,5 +425,6 @@ export function setupPluggy({ dataDir, readState, mutateState, log = console.log
     };
   }
 
-  return { handle, sync, preview };
+  const stop = () => clearTimeout(timer);
+  return { handle, sync, preview, stop };
 }

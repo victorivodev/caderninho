@@ -915,3 +915,13 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .rv-cat { height: 32px; border-radius: 9px; border: 1px solid var(--border-2); background: var(--card); color: var(--text); padding: 0 8px; font: inherit; font-size: 13px; flex: 1; min-width: 0; max-width: 200px; margin-right: auto; }
 .rv-actions .btn { flex: none; }
 .rv-note { display: block; font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+/* login e "Nós dois" */
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.login-card { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; }
+.login-card .brand { margin-bottom: 4px; }
+.login-err { color: var(--red); font-size: 12.5px; }
+.modal-body .field + .field { margin-top: 12px; }
+.couple-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; align-items: start; }
+.couple-card h2 { display: flex; align-items: center; gap: 8px; }
+.couple-card h2 .av { width: 26px; height: 26px; font-size: 12px; }
